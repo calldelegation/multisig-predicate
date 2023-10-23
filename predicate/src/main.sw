@@ -46,20 +46,20 @@ fn verify_signature(i: u64) -> u64 {
 
 fn main() -> bool {
     // Reject the transaction if there are not a sufficient number of signatures.
-    // if (3 <= tx_witnesses_count()) {
-    //     return false;
-    // }
+    if (3 <= tx_witnesses_count()) {
+        return false;
+    }
 
-    // let mut valid_signatures = 0;
+    let mut valid_signatures = 0;
 
-    // // Going through each of the signatures 
-    // valid_signatures = verify_signature(0);
-    // valid_signatures = valid_signatures + verify_signature(1);
-    // valid_signatures = valid_signatures + verify_signature(2);
+    // Going through each of the signatures 
+    valid_signatures = verify_signature(0);
+    valid_signatures = valid_signatures + verify_signature(1);
+    valid_signatures = valid_signatures + verify_signature(2);
 
-    // if valid_signatures >= REQUIRED_SIGNATURES {
-    //     return true;
-    // }
-    // return false;
+    if valid_signatures >= REQUIRED_SIGNATURES {
+        return true;
+    }
+    return false;
     return true;
 }
