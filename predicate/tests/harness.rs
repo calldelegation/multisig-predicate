@@ -8,7 +8,10 @@ use fuels::{
         input::Input,
         coin_type::CoinType,
         coin::Coin,
-        transaction_builders::ScriptTransactionBuilder
+        transaction_builders::{
+            ScriptTransactionBuilder,
+            TransactionBuilder
+        }
     }
 };
 
@@ -34,7 +37,7 @@ async fn predicate_test() -> Result<()> {
     // CONFIGURABLES
     let total_signatures = 3;
     let required_signatures = 2;
-    let signers = [
+    let signers: [Address; 3]= [
         wallet_1.address().into(),
         wallet_2.address().into(),
         wallet_3.address().into()
@@ -69,7 +72,7 @@ async fn predicate_test() -> Result<()> {
         // Wallets and predcaites
         let input_coin = Input::ResourceSigned {
             resource: CoinType::Coin(Coin {
-                amount: 10000000,
+                amount: 1000,
                 owner: wallet_1.address().clone(),
                 ..Default::default()
             }),
