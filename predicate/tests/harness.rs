@@ -1,5 +1,5 @@
 use fuels::{
-    accounts::{predicate::Predicate, wallet::WalletUnlocked, Account, fuel_crypto::SecretKey},
+    accounts::{predicate::Predicate, wallet::{WalletUnlocked, self}, Account, fuel_crypto::SecretKey},
     prelude::*,
     types::{
         Bits256,
@@ -67,39 +67,58 @@ async fn predicate_test() -> Result<()> {
             wallet.set_provider(provider.clone());
         });
 
-    // TXN BUILDER
-    let mut tb = {
-        // Wallets and predcaites
-        let input_coin = Input::ResourceSigned {
-            resource: CoinType::Coin(Coin {
-                amount: 1000,
-                owner: wallet_1.address().clone(),
-                ..Default::default()
-            }),
-        };
-
-        let output_coin = Output::coin(
-            Address::zeroed(), // take out ETH from predicate
-            1,
-            Default::default(),
-        );
-
-        ScriptTransactionBuilder::prepare_transfer(
-            vec![input_coin],
-            vec![output_coin],
-            Default::default(),
-            network_info,
-        )
-    };
-
-    // Sign the transaction
-    wallet_1.sign_transaction(&mut tb);
-
     // PREDICATE
     let predicate_binary_path = "./out/debug/predicate.bin";
     let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
         .with_provider(provider.clone())
         .with_configurables(configurables);
+
+    // TXN BUILDER
+    let mut tb = {
+        // Wallets and predicates
+        // let input_coin = Input::ResourceSigned {
+        //     resource: CoinType::Coin(Coin {
+        //         amount: 1000,
+        //         owner: wallet_1.address().clone(),
+        //         ..Default::default()
+        //     }),
+        // };
+        // QUESTION: What is wrong here
+        let input_coin = Input::ResourcePredicate { 
+            resource: CoinType::Coin(Coin {
+                amount: 1000,
+                owner: wallet_1.address().clone(),
+                ..Default::default()
+            }),
+            code: predicate.code().clone(), 
+            data: predicate.data().clone() 
+        };
+
+        // QUESTION: Resource signed vs resource predicates
+        // QUESTION: Resource signed vs signing the transaction?
+        // QUESTION: Is gas included? or is it done when the txn is built
+
+        // QUESTION: Where is the predicate address?
+        // QUESTION: What is the difference between coin and change
+        let output_coin = Output::coin(
+            wallet_1.address().into(), // take out ETH from predicate
+            0,
+            asset_id,
+        );
+
+        ScriptTransactionBuilder::prepare_transfer(
+            vec![input_coin],
+            vec![output_coin],
+            TxParameters::default().with_gas_price(1),
+            network_info,
+        )
+    };
+
+    // Sign the transaction
+    // Do I have to manually add to the witness data?
+    wallet_1.sign_transaction(&mut tb);
+    wallet_2.sign_transaction(&mut tb);
+    wallet_3.sign_transaction(&mut tb);
 
     // CHECK BALANCE BEFORE
     println!("Wallet 1 Balance {:?}", provider.get_asset_balance(wallet_1.address(), asset_id).await?);
@@ -122,10 +141,17 @@ async fn predicate_test() -> Result<()> {
     // SPEND PREDICATE
     println!("Spend the predicate");
     let tx = tb.build()?;
+    println!("Witnesses here: {:?}", tx.witnesses());
+    println!("Gas Price here: {:?}", tx.gas_price());
+
     provider.send_transaction_and_await_commit(tx).await?;
 
     // CHECK BALANCE AFTER
     println!("Wallet 1 Balance {:?}", provider.get_asset_balance(wallet_1.address(), asset_id).await?);
     println!("Predicate Balance {:?}", provider.get_asset_balance(predicate.address(), asset_id).await?);
     Ok(())
+
+    // QUESTION: Handling transaction id from predicate
 }
+
+// https://github.com/FuelLabs/fuels-rs/blob/812144352513acfc4cfbe48b2e7d21bfb4fee1ce/packages/fuels/tests/predicates.rs#L294
