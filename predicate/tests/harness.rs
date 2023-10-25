@@ -37,29 +37,13 @@ async fn predicate_test() -> Result<()> {
     // WALLETS
     let private_key_1: SecretKey = "0xc2620849458064e8f1eb2bc4c459f473695b443ac3134c82ddd4fd992bd138fd".parse().unwrap();
     let private_key_2: SecretKey = "0x37fa81c84ccd547c30c176b118d5cb892bdb113e8e80141f266519422ef9eefd".parse().unwrap();
-    let private_key_3: SecretKey = "0x976e5c3fa620092c718d852ca703b6da9e3075b9f2ecb8ed42d9f746bf26aafb".parse().unwrap();
 
     let mut wallet_1: WalletUnlocked = WalletUnlocked::new_from_private_key(private_key_1, None);
     let mut wallet_2: WalletUnlocked = WalletUnlocked::new_from_private_key(private_key_2, None);
-    let mut wallet_3: WalletUnlocked = WalletUnlocked::new_from_private_key(private_key_3, None);
 
-    // convert addresses here
+    // ADDRESS HASHES
     println!("Wallet 1 Address: 0x{:?}", wallet_1.address().hash());
     println!("Wallet 2 Address: 0x{:?}", wallet_2.address().hash());
-    println!("Wallet 3 Address: 0x{:?}", wallet_3.address().hash());
-
-    // CONFIGURABLES
-    let total_signatures = 3;
-    let required_signatures = 2;
-    let signers: [Address; 3]= [
-        wallet_1.address().into(),
-        wallet_2.address().into(),
-        wallet_3.address().into()
-    ];
-    let configurables = MultiSigConfigurables::new();
-    // NOTE: Must be using configurables in main to generate functions
-        // .with_REQUIRED_SIGNATURES(required_signatures)
-        // .with_SIGNERS(signers);
 
     // SETUP
     let asset_id = AssetId::default();
@@ -85,9 +69,7 @@ async fn predicate_test() -> Result<()> {
     // PREDICATE
     let predicate_binary_path = "./out/debug/predicate.bin";
     let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
-        .with_provider(provider.clone())
-        .with_configurables(configurables);
-    // attach predciate data here before inptus
+        .with_provider(provider.clone());
 
     // SEND SOME MONEY TO PREDICATE
     println!("Send money TO the predicate");
@@ -101,98 +83,24 @@ async fn predicate_test() -> Result<()> {
 
     // TXN BUILDER
     let mut tb: ScriptTransactionBuilder = {
-        // Wallets and predicates
-        // let input_coin = Input::ResourceSigned {
-        //     resource: CoinType::Coin(Coin {
-        //         amount: 0,
-        //         owner: wallet_1.address().clone(),
-        //         ..Default::default()
-        //     }),
-        // };
-        // A coin just owned by a wallet 
-
-        // QUESTION: What is wrong here
-        // let input_coin = Input::ResourcePredicate { 
-        //     resource: CoinType::Coin(Coin {
-        //         amount: 1000,
-        //         owner: wallet_1.address().clone(),
-        //         ..Default::default()
-        //     }),
-        //     code: predicate.code().clone(), 
-        //     data: predicate.data().clone() 
-        // };
-        // A resource owned by a predicate
-        
-        // QUESTION_PT2: Why do you have to specify ANY input here?
-        let amount_to_send = 12;
         let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 100).await?;
-        // call on predicate or wallet
-        // set of resource predicate
-
-        // QUESTION: Resource signed vs resource predicates
-        // QUESTION: Resource signed vs signing the transaction?
-        // QUESTION: Is gas included? or is it done when the txn is built
-
-        // QUESTION: Where is the predicate address?
-        // QUESTION: What is the difference between coin and change
-        // let output_coin = Output::coin(
-        //     wallet_1.address().into(), // take out ETH from predicate
-        //     0,
-        //     asset_id,
-        // );
 
         let output_coin = predicate.get_asset_outputs_for_amount(
             wallet_1.address().into(), 
             asset_id, 
-            amount_to_send
+            7
         );
-
-        // let output_coin = predicate.get_asset_outputs_for_amount(
-        //     wallet_1.address(), asset_id, amount)
 
         ScriptTransactionBuilder::prepare_transfer(
             input_coin,
             output_coin,
-            TxParameters::default().with_gas_price(1),
+            TxParameters::default(),
             network_info.clone(),
         )
     };
 
-    // Sign the transaction
-    // Do I have to manually add to the witness data?
-    // try this first
-    // https://github.com/FuelLabs/fuels-rs/blob/66aef68f74a76dda0d41d678055cf35ee00e5535/examples/predicates/src/lib.rs#L57=#L71
     wallet_1.sign_transaction(&mut tb);
     wallet_2.sign_transaction(&mut tb);
-    // different
-    // wallet_3.sign_transaction(&mut tb);
-
-    // NOTE can also use append witness
-
-    // DETOUR ᕙ(⇀‸↼‶)ᕗ
-    // let inputs = predicate
-    // .get_asset_inputs_for_amount(asset_id, 100)
-    // .await
-    // .unwrap();
-
-    // let outputs = predicate.get_asset_outputs_for_amount(wallet_2.address().into(), asset_id, 420);
-
-    // let script_transaction = ScriptTransactionBuilder::prepare_transfer(
-    //     inputs,
-    //     outputs,
-    //     TxParameters::default(),
-    //     network_info.clone()
-    // ).build().unwrap();
-
-    // Why should we build first?
-
-    // let tx_id = script_transaction.id(network_info.chain_id());
-
-    // let signature = wallet_1.sign_message(*tx_id).await.unwrap();
-
-    // script_transaction.append_witness(
-    //     Witness::from
-    // )
 
     // CHECK BALANCE BEFORE
     println!("Wallet 1 Balance {:?}", provider.get_asset_balance(wallet_1.address(), asset_id).await?);
@@ -207,8 +115,6 @@ async fn predicate_test() -> Result<()> {
     println!("Spend the predicate");
     let tx: ScriptTransaction = tb.build()?;
 
-    // DETOUR NUMBA 2 ┻━┻︵ \(°□°)/ ︵ ┻━┻ 
-    // Extract the signature from the tx witnesses
     let bytes = <[u8; Signature::LEN]>::try_from(tx.witnesses().first().unwrap().as_ref())?;
     let tx_signature = Signature::from_bytes(bytes);
 
@@ -223,12 +129,7 @@ async fn predicate_test() -> Result<()> {
     // Recover the address that signed the transaction
     let recovered_address = signature.recover(&message).unwrap();
     println!("Public Key 1 {:?}", recovered_address.hash());
-
-
-    println!("Witnesses here: {:?}", tx.witnesses());
-    println!("Gas Price here: {:?}", tx.gas_price());
-    println!("Txn ID here: {:?}", tx.id(network_info.chain_id()));
-    println!("Txn maturity here: {:?}", tx.maturity());
+    // My wallet public key 0x06518005a3a85a82894928496a0191fe123b2f3990cff57a010d284988d27139
 
     provider.send_transaction_and_await_commit(tx).await?;
 
@@ -236,19 +137,4 @@ async fn predicate_test() -> Result<()> {
     println!("Wallet 1 Balance {:?}", provider.get_asset_balance(wallet_1.address(), asset_id).await?);
     println!("Predicate Balance {:?}", provider.get_asset_balance(predicate.address(), asset_id).await?);
     Ok(())
-
-    // QUESTION: Handling transaction id from predicate
 }
-
-// https://github.com/FuelLabs/fuels-rs/blob/812144352513acfc4cfbe48b2e7d21bfb4fee1ce/packages/fuels/tests/predicates.rs#L294
-
-// can_set_configurables
-
-// Questions:
-// When should I use configurables vs parameters
-// Why do you have to specify ANY input here and cannot use ZERO as input
-// Why did braqzen have to build first and append his own witnesses
-// Why did BSAFE need to convert to ascii first
-// How to test using scripting
-
-// GOLDMINE https://github.com/FuelLabs/fuels-rs/blob/66aef68f74a76dda0d41d678055cf35ee00e5535/packages/fuels/tests/predicates.rs
