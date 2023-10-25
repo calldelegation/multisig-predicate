@@ -72,57 +72,7 @@ async fn predicate_test() -> Result<()> {
     let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
         .with_provider(provider.clone())
         .with_configurables(configurables);
-
-    // TXN BUILDER
-    let mut tb = {
-        // Wallets and predicates
-        // let input_coin = Input::ResourceSigned {
-        //     resource: CoinType::Coin(Coin {
-        //         amount: 1000,
-        //         owner: wallet_1.address().clone(),
-        //         ..Default::default()
-        //     }),
-        // };
-        // QUESTION: What is wrong here
-        let input_coin = Input::ResourcePredicate { 
-            resource: CoinType::Coin(Coin {
-                amount: 1000,
-                owner: wallet_1.address().clone(),
-                ..Default::default()
-            }),
-            code: predicate.code().clone(), 
-            data: predicate.data().clone() 
-        };
-
-        // QUESTION: Resource signed vs resource predicates
-        // QUESTION: Resource signed vs signing the transaction?
-        // QUESTION: Is gas included? or is it done when the txn is built
-
-        // QUESTION: Where is the predicate address?
-        // QUESTION: What is the difference between coin and change
-        let output_coin = Output::coin(
-            wallet_1.address().into(), // take out ETH from predicate
-            0,
-            asset_id,
-        );
-
-        ScriptTransactionBuilder::prepare_transfer(
-            vec![input_coin],
-            vec![output_coin],
-            TxParameters::default().with_gas_price(1),
-            network_info,
-        )
-    };
-
-    // Sign the transaction
-    // Do I have to manually add to the witness data?
-    wallet_1.sign_transaction(&mut tb);
-    wallet_2.sign_transaction(&mut tb);
-    wallet_3.sign_transaction(&mut tb);
-
-    // CHECK BALANCE BEFORE
-    println!("Wallet 1 Balance {:?}", provider.get_asset_balance(wallet_1.address(), asset_id).await?);
-    println!("Predicate Balance {:?}", provider.get_asset_balance(predicate.address(), asset_id).await?);
+    // attach predciate data here before inptus
 
     // SEND SOME MONEY TO PREDICATE
     println!("Send money TO the predicate");
@@ -134,6 +84,76 @@ async fn predicate_test() -> Result<()> {
     )
     .await?;
 
+    // TXN BUILDER
+    let mut tb = {
+        // Wallets and predicates
+        // let input_coin = Input::ResourceSigned {
+        //     resource: CoinType::Coin(Coin {
+        //         amount: 0,
+        //         owner: wallet_1.address().clone(),
+        //         ..Default::default()
+        //     }),
+        // };
+        // A coin just owned by a wallet 
+
+        // QUESTION: What is wrong here
+        // let input_coin = Input::ResourcePredicate { 
+        //     resource: CoinType::Coin(Coin {
+        //         amount: 1000,
+        //         owner: wallet_1.address().clone(),
+        //         ..Default::default()
+        //     }),
+        //     code: predicate.code().clone(), 
+        //     data: predicate.data().clone() 
+        // };
+        // A resource owned by a predicate
+        
+        let amount_to_send = 12;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1).await?;
+        // call on predicate or wallet
+        // set of resource predicate
+
+        // QUESTION: Resource signed vs resource predicates
+        // QUESTION: Resource signed vs signing the transaction?
+        // QUESTION: Is gas included? or is it done when the txn is built
+
+        // QUESTION: Where is the predicate address?
+        // QUESTION: What is the difference between coin and change
+        // let output_coin = Output::coin(
+        //     wallet_1.address().into(), // take out ETH from predicate
+        //     0,
+        //     asset_id,
+        // );
+
+        let output_coin = predicate.get_asset_outputs_for_amount(
+            wallet_1.address().into(), 
+            asset_id, 
+            amount_to_send
+        );
+
+        // let output_coin = predicate.get_asset_outputs_for_amount(
+        //     wallet_1.address(), asset_id, amount)
+
+        ScriptTransactionBuilder::prepare_transfer(
+            input_coin,
+            output_coin,
+            TxParameters::default().with_gas_price(1),
+            network_info.clone(),
+        )
+    };
+
+    // Sign the transaction
+    // Do I have to manually add to the witness data?
+    // try this first
+    // https://github.com/FuelLabs/fuels-rs/blob/66aef68f74a76dda0d41d678055cf35ee00e5535/examples/predicates/src/lib.rs#L57=#L71
+    wallet_1.sign_transaction(&mut tb);
+    wallet_2.sign_transaction(&mut tb);
+    wallet_3.sign_transaction(&mut tb);
+
+    // CHECK BALANCE BEFORE
+    println!("Wallet 1 Balance {:?}", provider.get_asset_balance(wallet_1.address(), asset_id).await?);
+    println!("Predicate Balance {:?}", provider.get_asset_balance(predicate.address(), asset_id).await?);
+
     // CHECK BALANCE MIDDLE
     println!("Wallet 1 Balance {:?}", provider.get_asset_balance(wallet_1.address(), asset_id).await?);
     println!("Predicate Balance {:?}", provider.get_asset_balance(predicate.address(), asset_id).await?);
@@ -143,6 +163,7 @@ async fn predicate_test() -> Result<()> {
     let tx = tb.build()?;
     println!("Witnesses here: {:?}", tx.witnesses());
     println!("Gas Price here: {:?}", tx.gas_price());
+    println!("Txn ID here: {:?}", tx.id(network_info.chain_id()));
 
     provider.send_transaction_and_await_commit(tx).await?;
 

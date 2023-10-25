@@ -62,4 +62,9 @@ fn main() -> bool {
     // }
     // return false;
     return true;
+    // 1. build predicate that validates configurables
+    // 2. build predicate that validates witness data
+    // 3. build predicate that validates witness count
+    // 4. build predicate that validates signatures of zero ONLY
+    // 5. build predicate that validates signatures of tx_id
 }
