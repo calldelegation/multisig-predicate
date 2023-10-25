@@ -61,13 +61,12 @@ fn main() -> bool {
     //     return true;
     // }
     // return false;
-    if (REQUIRED_SIGNATURES == 2) {
-        return true;
-    }
-    return false;
-    // 1. build predicate that validates configurables - done
+    let signature = x_witness_data(
+    if ec_recover_address()
+
+    // 1. build predicate that validates configurables - Done
     // 2. build predicate that validates witness data
-    // 3. build predicate that validates witness count
+    // 3. build predicate that validates witness count - Done
     // 4. build predicate that validates signatures of zero ONLY
     // 5. build predicate that validates signatures of tx_id
 }

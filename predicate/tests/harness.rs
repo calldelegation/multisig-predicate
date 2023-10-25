@@ -1,22 +1,31 @@
 use fuels::{
-    accounts::{predicate::Predicate, wallet::{WalletUnlocked, self}, Account, fuel_crypto::SecretKey},
+    accounts::{
+        predicate::Predicate, 
+        wallet::{WalletUnlocked, self}, 
+        Account, 
+        fuel_crypto::{
+            SecretKey,
+            Signature,
+            Message
+        }
+    },
     prelude::*,
     types::{
         Bits256,
         B512,
-        output::Output,
-        input::Input,
+        output::{Output, self},
+        input::{Input, self},
         coin_type::CoinType,
         coin::Coin,
+        // message::Message,
         transaction_builders::{
             ScriptTransactionBuilder,
             TransactionBuilder
         }
-    }
+    },
 };
 
 use std::str::FromStr;
-
 
 abigen!(Predicate(
     name = "MultiSig",
@@ -91,7 +100,7 @@ async fn predicate_test() -> Result<()> {
     .await?;
 
     // TXN BUILDER
-    let mut tb = {
+    let mut tb: ScriptTransactionBuilder = {
         // Wallets and predicates
         // let input_coin = Input::ResourceSigned {
         //     resource: CoinType::Coin(Coin {
@@ -116,7 +125,7 @@ async fn predicate_test() -> Result<()> {
         
         // QUESTION_PT2: Why do you have to specify ANY input here?
         let amount_to_send = 12;
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 100).await?;
         // call on predicate or wallet
         // set of resource predicate
 
@@ -155,7 +164,35 @@ async fn predicate_test() -> Result<()> {
     // https://github.com/FuelLabs/fuels-rs/blob/66aef68f74a76dda0d41d678055cf35ee00e5535/examples/predicates/src/lib.rs#L57=#L71
     wallet_1.sign_transaction(&mut tb);
     wallet_2.sign_transaction(&mut tb);
+    // different
     // wallet_3.sign_transaction(&mut tb);
+
+    // NOTE can also use append witness
+
+    // DETOUR ᕙ(⇀‸↼‶)ᕗ
+    // let inputs = predicate
+    // .get_asset_inputs_for_amount(asset_id, 100)
+    // .await
+    // .unwrap();
+
+    // let outputs = predicate.get_asset_outputs_for_amount(wallet_2.address().into(), asset_id, 420);
+
+    // let script_transaction = ScriptTransactionBuilder::prepare_transfer(
+    //     inputs,
+    //     outputs,
+    //     TxParameters::default(),
+    //     network_info.clone()
+    // ).build().unwrap();
+
+    // Why should we build first?
+
+    // let tx_id = script_transaction.id(network_info.chain_id());
+
+    // let signature = wallet_1.sign_message(*tx_id).await.unwrap();
+
+    // script_transaction.append_witness(
+    //     Witness::from
+    // )
 
     // CHECK BALANCE BEFORE
     println!("Wallet 1 Balance {:?}", provider.get_asset_balance(wallet_1.address(), asset_id).await?);
@@ -165,10 +202,29 @@ async fn predicate_test() -> Result<()> {
     println!("Wallet 1 Balance {:?}", provider.get_asset_balance(wallet_1.address(), asset_id).await?);
     println!("Predicate Balance {:?}", provider.get_asset_balance(predicate.address(), asset_id).await?);
     
+    
     // SPEND PREDICATE
     println!("Spend the predicate");
-    let tx = tb.build()?;
-    
+    let tx: ScriptTransaction = tb.build()?;
+
+    // DETOUR NUMBA 2 ┻━┻︵ \(°□°)/ ︵ ┻━┻ 
+    // Extract the signature from the tx witnesses
+    let bytes = <[u8; Signature::LEN]>::try_from(tx.witnesses().first().unwrap().as_ref())?;
+    let tx_signature = Signature::from_bytes(bytes);
+
+    println!("Signature 1 {:?}", tx_signature);
+
+    // Sign the transaction manually
+    let message = Message::from_bytes(*tx.id(0.into()));
+    let signature = Signature::sign(&private_key_1, &message);
+
+    println!("Signature 2 {:?}", signature);
+
+    // Recover the address that signed the transaction
+    let recovered_address = signature.recover(&message).unwrap();
+    println!("Public Key 1 {:?}", recovered_address.hash());
+
+
     println!("Witnesses here: {:?}", tx.witnesses());
     println!("Gas Price here: {:?}", tx.gas_price());
     println!("Txn ID here: {:?}", tx.id(network_info.chain_id()));
@@ -189,4 +245,10 @@ async fn predicate_test() -> Result<()> {
 // can_set_configurables
 
 // Questions:
-// When should I use configurables vs 
+// When should I use configurables vs parameters
+// Why do you have to specify ANY input here and cannot use ZERO as input
+// Why did braqzen have to build first and append his own witnesses
+// Why did BSAFE need to convert to ascii first
+// How to test using scripting
+
+// GOLDMINE https://github.com/FuelLabs/fuels-rs/blob/66aef68f74a76dda0d41d678055cf35ee00e5535/packages/fuels/tests/predicates.rs
