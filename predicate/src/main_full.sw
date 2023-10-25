@@ -61,13 +61,11 @@ fn main() -> bool {
     //     return true;
     // }
     // return false;
-
-    if (tx_witnesses_count() >= 2) {
+    if (REQUIRED_SIGNATURES == 2) {
         return true;
     }
     return false;
-
-    // 1. build predicate that validates configurables
+    // 1. build predicate that validates configurables - done
     // 2. build predicate that validates witness data
     // 3. build predicate that validates witness count
     // 4. build predicate that validates signatures of zero ONLY
