@@ -126,6 +126,68 @@ async fn multisig_two_of_three() -> Result<()> {
 }
 
 #[tokio::test]
+async fn multisig_mixed_three_of_three() -> Result<()> {
+    let (wallets, provider, network_info, asset_id) = setup_wallets_and_network().await;
+
+    // CONFIGURABLES
+    let required_signatures = 3;
+    let signers: [Address; 3] = [
+        wallets[0].address().into(),
+        wallets[1].address().into(),
+        wallets[2].address().into(),
+    ];
+
+    let configurables = MultiSigConfigurables::new()
+        .with_REQUIRED_SIGNATURES(required_signatures)
+        .with_SIGNERS(signers);
+
+    // PREDICATE
+    let predicate_binary_path = "./out/debug/predicate.bin";
+    let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
+        .with_provider(provider.clone())
+        .with_configurables(configurables);
+
+    let multisig_amount = 1000;
+    let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
+
+
+    wallets[0]
+        .transfer(predicate.address(), multisig_amount, asset_id, TxParameters::default())
+        .await?;
+
+    let mut tb: ScriptTransactionBuilder = {
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 100).await?;
+
+        let output_coin =
+            predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
+
+        ScriptTransactionBuilder::prepare_transfer(
+            input_coin,
+            output_coin,
+            TxParameters::default(),
+            network_info.clone(),
+        )
+    };
+
+    // NOTE Cannot be signed in any order
+    wallets[2].sign_transaction(&mut tb);
+    wallets[0].sign_transaction(&mut tb);
+    wallets[1].sign_transaction(&mut tb);
+
+    assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
+
+    // SPEND PREDICATE
+    let tx: ScriptTransaction = tb.build()?;
+    provider.send_transaction_and_await_commit(tx).await?;
+
+    assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, 0);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount);
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn multisig_same_signature_fails() -> Result<()> {
     let (wallets, provider, network_info, asset_id) = setup_wallets_and_network().await;
 

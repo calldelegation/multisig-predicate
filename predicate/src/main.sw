@@ -28,15 +28,18 @@ fn verify_signature(i: u64) -> u64 {
     }
 
     let tx_hash = tx_id();
-    let current_signature = tx_witness_data::<B512>(i);
-    let current_address = ec_recover_address(current_signature, tx_hash).unwrap();
-
+ 
     let mut j = 0;
 
     while j < 3 {
+        let current_signature = tx_witness_data::<B512>(j);
+        
+        let current_address = ec_recover_address(current_signature, tx_hash).unwrap();
+
         if current_address.value == SIGNERS[i].value {
             return 1;
         }
+
         j += 1;
     }
     return 0;
