@@ -86,7 +86,7 @@ async fn multisig_two_of_three() -> Result<()> {
         .with_provider(provider.clone())
         .with_configurables(configurables);
 
-    let multisig_amount = 1000;
+    let multisig_amount = 100;
     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
 
 
@@ -95,7 +95,7 @@ async fn multisig_two_of_three() -> Result<()> {
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 100).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1000).await?;
 
         let output_coin =
             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
@@ -147,7 +147,7 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
         .with_provider(provider.clone())
         .with_configurables(configurables);
 
-    let multisig_amount = 1000;
+    let multisig_amount = 100;
     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
 
 
@@ -156,7 +156,7 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 100).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1000).await?;
 
         let output_coin =
             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
@@ -209,7 +209,7 @@ async fn multisig_same_signature_fails() -> Result<()> {
         .with_provider(provider.clone())
         .with_configurables(configurables);
 
-    let multisig_amount = 1000;
+    let multisig_amount = 100;
     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
 
 
@@ -218,7 +218,7 @@ async fn multisig_same_signature_fails() -> Result<()> {
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 100).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1000).await?;
 
         let output_coin =
             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
@@ -266,7 +266,7 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
         .with_provider(provider.clone())
         .with_configurables(configurables);
 
-    let multisig_amount = 1000;
+    let multisig_amount = 100;
     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
 
 
@@ -275,7 +275,7 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 100).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1000).await?;
 
         let output_coin =
             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
