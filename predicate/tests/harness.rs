@@ -6,7 +6,7 @@ use fuels::{
         Account,
     },
     prelude::*,
-    types::transaction_builders::{NetworkInfo, ScriptTransactionBuilder, TransactionBuilder},
+    types::transaction_builders::{NetworkInfo, ScriptTransactionBuilder, BuildableTransaction},
 };
 
 abigen!(Predicate(
@@ -17,15 +17,15 @@ abigen!(Predicate(
 async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, NetworkInfo, AssetId) {
     // WALLETS
     let private_key_0: SecretKey =
-        "0xc2620849458064e8f1eb2bc4c459f473695b443ac3134c82ddd4fd992bd138fd"
+        "5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378"
             .parse()
             .unwrap();
     let private_key_1: SecretKey =
-        "0x37fa81c84ccd547c30c176b118d5cb892bdb113e8e80141f266519422ef9eefd"
+        "5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378"
             .parse()
             .unwrap();
     let private_key_2: SecretKey =
-        "0x976e5c3fa620092c718d852ca703b6da9e3075b9f2ecb8ed42d9f746bf26aafb"
+        "5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378"
             .parse()
             .unwrap();
 
@@ -44,9 +44,9 @@ async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, NetworkI
         .collect::<Vec<_>>();
 
     // NETWORKS
-    let node_config = Config::local_node();
+    let node_config = Config::default();
 
-    let provider = setup_test_provider(all_coins, vec![], Some(node_config), None).await;
+    let provider = setup_test_provider(all_coins, vec![], Some(node_config), None).await.unwrap();
 
     let network_info = provider.network_info().await.unwrap();
 
@@ -69,7 +69,7 @@ async fn multisig_two_of_three() -> Result<()> {
     let (wallets, provider, network_info, asset_id) = setup_wallets_and_network().await;
 
     // CONFIGURABLES
-    let required_signatures = 2;
+    let required_signatures = 1;
     let signers: [Address; 3] = [
         wallets[0].address().into(),
         wallets[1].address().into(),
@@ -89,13 +89,17 @@ async fn multisig_two_of_three() -> Result<()> {
     let multisig_amount = 100;
     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
 
+    println!("{:?}", wallets[0].address());
+    println!("{:?}", wallets[1].address());
+    println!("{:?}", wallets[2].address());
+    println!("{:?}", predicate.address());
 
     wallets[0]
-        .transfer(predicate.address(), multisig_amount, asset_id, TxParameters::default())
+        .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1000).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1).await?;
 
         let output_coin =
             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
@@ -103,7 +107,7 @@ async fn multisig_two_of_three() -> Result<()> {
         ScriptTransactionBuilder::prepare_transfer(
             input_coin,
             output_coin,
-            TxParameters::default(),
+            TxPolicies::default(),
             network_info.clone(),
         )
     };
@@ -116,7 +120,7 @@ async fn multisig_two_of_three() -> Result<()> {
     assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
 
     // SPEND PREDICATE
-    let tx: ScriptTransaction = tb.build()?;
+    let tx: ScriptTransaction = tb.build(provider.clone()).await?;
     provider.send_transaction_and_await_commit(tx).await?;
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, 0);
@@ -152,11 +156,11 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
 
 
     wallets[0]
-        .transfer(predicate.address(), multisig_amount, asset_id, TxParameters::default())
+        .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1000).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1).await?;
 
         let output_coin =
             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
@@ -164,7 +168,7 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
         ScriptTransactionBuilder::prepare_transfer(
             input_coin,
             output_coin,
-            TxParameters::default(),
+            TxPolicies::default(),
             network_info.clone(),
         )
     };
@@ -178,7 +182,7 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
     assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
 
     // SPEND PREDICATE
-    let tx: ScriptTransaction = tb.build()?;
+    let tx: ScriptTransaction = tb.build(provider.clone()).await?;
     provider.send_transaction_and_await_commit(tx).await?;
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, 0);
@@ -214,11 +218,11 @@ async fn multisig_same_signature_fails() -> Result<()> {
 
 
     wallets[0]
-        .transfer(predicate.address(), multisig_amount, asset_id, TxParameters::default())
+        .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1000).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1).await?;
 
         let output_coin =
             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
@@ -226,7 +230,7 @@ async fn multisig_same_signature_fails() -> Result<()> {
         ScriptTransactionBuilder::prepare_transfer(
             input_coin,
             output_coin,
-            TxParameters::default(),
+            TxPolicies::default(),
             network_info.clone(),
         )
     };
@@ -238,7 +242,7 @@ async fn multisig_same_signature_fails() -> Result<()> {
     assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
 
     // SPEND PREDICATE
-    let tx: ScriptTransaction = tb.build()?;
+    let tx: ScriptTransaction = tb.build(provider.clone()).await?;
     let _ = provider.send_transaction_and_await_commit(tx).await.is_err();
 
     Ok(())
@@ -271,11 +275,11 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
 
 
     wallets[0]
-        .transfer(predicate.address(), multisig_amount, asset_id, TxParameters::default())
+        .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1000).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1).await?;
 
         let output_coin =
             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
@@ -283,7 +287,7 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
         ScriptTransactionBuilder::prepare_transfer(
             input_coin,
             output_coin,
-            TxParameters::default(),
+            TxPolicies::default(),
             network_info.clone(),
         )
     };
@@ -294,7 +298,7 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
     assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
 
     // SPEND PREDICATE
-    let tx: ScriptTransaction = tb.build()?;
+    let tx: ScriptTransaction = tb.build(provider.clone()).await?;
     let _ = provider.send_transaction_and_await_commit(tx).await.is_err();
 
     Ok(())
