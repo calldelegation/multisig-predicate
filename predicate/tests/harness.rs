@@ -17,15 +17,15 @@ abigen!(Predicate(
 async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, NetworkInfo, AssetId) {
     // WALLETS
     let private_key_0: SecretKey =
-        "0xc2620849458064e8f1eb2bc4c459f473695b443ac3134c82ddd4fd992bd138fd"
+        "5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378"
             .parse()
             .unwrap();
     let private_key_1: SecretKey =
-        "0x37fa81c84ccd547c30c176b118d5cb892bdb113e8e80141f266519422ef9eefd"
+        "5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378"
             .parse()
             .unwrap();
     let private_key_2: SecretKey =
-        "0x976e5c3fa620092c718d852ca703b6da9e3075b9f2ecb8ed42d9f746bf26aafb"
+        "5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378"
             .parse()
             .unwrap();
 
@@ -69,7 +69,7 @@ async fn multisig_two_of_three() -> Result<()> {
     let (wallets, provider, network_info, asset_id) = setup_wallets_and_network().await;
 
     // CONFIGURABLES
-    let required_signatures = 2;
+    let required_signatures = 1;
     let signers: [Address; 3] = [
         wallets[0].address().into(),
         wallets[1].address().into(),
@@ -89,6 +89,10 @@ async fn multisig_two_of_three() -> Result<()> {
     let multisig_amount = 100;
     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
 
+    println!("{:?}", wallets[0].address());
+    println!("{:?}", wallets[1].address());
+    println!("{:?}", wallets[2].address());
+    println!("{:?}", predicate.address());
 
     wallets[0]
         .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
