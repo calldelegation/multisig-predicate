@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useFuel, useIsConnected, useAccount, useWallet } from '@fuel-wallet/react';
+import { Address } from 'fuels';
 import Create from "./components/create";
 import "./App.css";
  
@@ -11,8 +12,6 @@ function App() {
   const { fuel } = useFuel();
   const { account } = useAccount();
   const { wallet } = useWallet({ address: account });
-
-  
 
   return (
     <div className="App">
@@ -39,7 +38,6 @@ function App() {
         <div>
           { isConnected ? (
             <div>
-              Connected!  
               <Create/>
             </div>
           ) : (
