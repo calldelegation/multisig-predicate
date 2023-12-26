@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { BN, bn, Predicate, Provider, Address, BaseAssetId } from "fuels";
+import { BN, bn, Predicate, Provider, Address, BaseAssetId, hexlify, arrayify} from "fuels";
 import { useFuel, useAccount, useWallet } from '@fuel-wallet/react';
-import { PredicateAbi__factory } from "../predicate";
+// import { PredicateAbi__factory } from "../predicate";
+import { SimplePredicateAbi__factory } from "../simple-predicate";
+import { bin, abi } from "../generated/predicateData"
 
 
 type AddressInput = { value: string };
@@ -35,10 +37,10 @@ export default function Create() {
     useEffect(() => {
         async function fetchPredicate() {
             try {
-                const provider = await Provider.create(
-                    "https://beta-4.fuel.network/graphql"
-                );
-                const predicateInstance = new Predicate(PredicateAbi__factory.bin, provider, PredicateAbi__factory.abi, configurable);
+                const provider = await Provider.create('https://beta-4.fuel.network/graphql');
+                // const predicateInstance = new Predicate(PredicateAbi__factory.bin, provider, PredicateAbi__factory.abi, configurable);
+                const predicateInstance = new Predicate(SimplePredicateAbi__factory.bin, provider, SimplePredicateAbi__factory.abi);
+                console.log(predicateInstance.address)
                 setPredicate(predicateInstance);
             } catch (error) {
                 console.error("Error fetching predicate:", error);
@@ -144,6 +146,7 @@ export default function Create() {
             )}
 
             {balance !== null ? <p>Balance: {balance}</p> : <p>Loading Balance...</p>}
+
 
             <input
                 type="text"
