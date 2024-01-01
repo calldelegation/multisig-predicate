@@ -1,10 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { BN, bn, Predicate, Provider, Address, BaseAssetId, hexlify, arrayify} from "fuels";
-import { useFuel, useAccount, useWallet } from '@fuel-wallet/react';
-// import { PredicateAbi__factory } from "../predicate";
-import { SimplePredicateAbi__factory } from "../simple-predicate";
-import { bin, abi } from "../generated/predicateData"
-
+import { BN, bn, Predicate, Provider, Address, BaseAssetId, WalletUnlocked, ScriptTransactionRequest, hexlify, transactionRequestify, Coin } from "fuels";
+import { PredicateAbi__factory } from "../predicate";
+import { useFuel, useIsConnected, useAccount, useWallet } from '@fuel-wallet/react';
 
 type AddressInput = { value: string };
 
@@ -21,6 +18,7 @@ export default function Create() {
     const [destinationAddress, setDestinationAddress] = useState("");
     const [amountToSend, setAmountToSend] = useState("");
 
+    const { isConnected } = useIsConnected();
     const { fuel } = useFuel();
     const { account } = useAccount();
     const { wallet } = useWallet({ address: account });
@@ -37,10 +35,10 @@ export default function Create() {
     useEffect(() => {
         async function fetchPredicate() {
             try {
-                const provider = await Provider.create('https://beta-4.fuel.network/graphql');
-                // const predicateInstance = new Predicate(PredicateAbi__factory.bin, provider, PredicateAbi__factory.abi, configurable);
-                const predicateInstance = new Predicate(SimplePredicateAbi__factory.bin, provider, SimplePredicateAbi__factory.abi);
-                console.log(predicateInstance.address)
+                const provider = await Provider.create(
+                    "https://beta-4.fuel.network/graphql"
+                );
+                const predicateInstance = new Predicate(PredicateAbi__factory.bin, provider, PredicateAbi__factory.abi, configurable);
                 setPredicate(predicateInstance);
             } catch (error) {
                 console.error("Error fetching predicate:", error);
@@ -79,21 +77,55 @@ export default function Create() {
             return;
         }
 
-        if (!fuel) {
-            console.error("Fuel object is not available.");
-            return;
-        }
-
-        const accounts = await fuel?.accounts();
-        const account = accounts[0];
-        const wallet = await fuel.getWallet(account);
-        console.log(wallet)
         try {
-            const gasPrice = 10;
-            const tx = await predicate.transfer(Address.fromString(destinationAddress), bn.parseUnits(amountToSend.toString()), BaseAssetId, {
-                gasPrice,
-            });
-            console.log("Transfer successful:", tx);
+            // const tx = await predicate.simulateTransaction.getTransferTxId(Address.fromString(destinationAddress), bn.parseUnits(amountToSend.toString()), BaseAssetId, {
+            //     gasPrice,
+            // });
+            const provider = await Provider.create(
+                "https://beta-4.fuel.network/graphql"
+            );
+
+            const wallet = new WalletUnlocked(Address.fromB256("0x5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378").toBytes(), provider);
+
+            const request = new ScriptTransactionRequest();
+            request.addCoinOutput(wallet.address, bn(0.1), BaseAssetId);
+            const resources = await provider.getResourcesToSpend(predicate.address, [
+                {
+                    amount: bn(1),
+                    assetId: BaseAssetId,
+                },
+            ]);
+            request.addResources(resources);
+
+            const txCost = await provider.getTransactionCost(request);
+            request.gasLimit = txCost.gasUsed;
+            request.gasPrice = txCost.gasPrice;
+
+            predicate.populateTransactionPredicateData(request);
+            await wallet.populateTransactionWitnessesSignature(request);
+            await wallet.signTransaction(request)
+            const result = await predicate.sendTransaction(request);
+            console.log(result)
+
+            // request.addPredicateResources(resourcesPredicate, predicate);
+            // request.addCoinInput(coin, predicate)
+            // request.addCoinOutput(wallet.address, bn(0.04321), BaseAssetId);
+            // const resources = await provider.getResourcesToSpend(predicate.address, [
+            //     {
+            //         amount: bn(0.1),
+            //         assetId: BaseAssetId,
+            //     },
+            // ]);
+            // request.addResources(resources);
+
+            // wallet.signTransaction(request);
+
+            // const predicateResources = await predicate.getResourcesToSpend([
+            //     [1, BaseAssetId],
+            // ]);
+            
+            // const result = await predicate.sendTransaction(request);
+            // console.log(result)
         } catch (error) {
             console.error("Error during transfer:", error);
         }
@@ -146,7 +178,6 @@ export default function Create() {
             )}
 
             {balance !== null ? <p>Balance: {balance}</p> : <p>Loading Balance...</p>}
-
 
             <input
                 type="text"
