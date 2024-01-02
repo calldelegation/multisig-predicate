@@ -86,20 +86,32 @@ export default function Create() {
             );
 
             const wallet = new WalletUnlocked(Address.fromB256("0x5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378").toBytes(), provider);
-            const coin: Coin = {
-                id: BaseAssetId,
-                assetId: BaseAssetId,
-                amount: bn(0.1),
-                owner: wallet.address,
-                maturity: 0,
-                blockCreated: bn(1),
-                txCreatedIdx: bn(1),
-            }
             const request = new ScriptTransactionRequest();
-            request.addCoinInput(coin, predicate)
-            // request.addCoinOutput(wallet.address, bn(0.1), BaseAssetId);
-            const resources = await predicate.getResourcesToSpend([[bn(0.01), BaseAssetId]]);
-            request.addPredicateResources(resources, predicate);
+            // const coin: Coin = {
+            //     id: BaseAssetId,
+            //     assetId: BaseAssetId,
+            //     amount: bn(0.1),
+            //     owner: predicate.address,
+            //     maturity: 0,
+            //     blockCreated: bn(1),
+            //     txCreatedIdx: bn(1),
+            // }
+            // request.addCoinInput(coin, predicate)
+            console.log("wallet", wallet.address.toB256())
+            console.log("wallet balance", (await wallet.getBalance(BaseAssetId)).toNumber());
+            console.log("predicate", predicate.address.toB256())
+            console.log("predicate balance", (await predicate.getBalance(BaseAssetId)).toNumber());
+
+
+            const walletResources = await wallet.getResourcesToSpend([[0.1, BaseAssetId]]);
+            request.addResources(walletResources)
+            console.log("wallet resources", walletResources)
+
+            const predicateResources = await predicate.getResourcesToSpend([[bn(0.01), BaseAssetId]]);
+            console.log("predicate resources", predicateResources)
+            request.addPredicateResources(predicateResources, predicate);
+
+            console.log(provider.cache)
 
             const txCost = await provider.getTransactionCost(request);
             request.gasLimit = txCost.gasUsed;
