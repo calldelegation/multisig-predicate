@@ -86,16 +86,20 @@ export default function Create() {
             );
 
             const wallet = new WalletUnlocked(Address.fromB256("0x5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378").toBytes(), provider);
-
+            const coin: Coin = {
+                id: BaseAssetId,
+                assetId: BaseAssetId,
+                amount: bn(0.1),
+                owner: wallet.address,
+                maturity: 0,
+                blockCreated: bn(1),
+                txCreatedIdx: bn(1),
+            }
             const request = new ScriptTransactionRequest();
-            request.addCoinOutput(wallet.address, bn(0.1), BaseAssetId);
-            const resources = await provider.getResourcesToSpend(predicate.address, [
-                {
-                    amount: bn(1),
-                    assetId: BaseAssetId,
-                },
-            ]);
-            request.addResources(resources);
+            request.addCoinInput(coin, predicate)
+            // request.addCoinOutput(wallet.address, bn(0.1), BaseAssetId);
+            const resources = await predicate.getResourcesToSpend([[bn(0.01), BaseAssetId]]);
+            request.addPredicateResources(resources, predicate);
 
             const txCost = await provider.getTransactionCost(request);
             request.gasLimit = txCost.gasUsed;
@@ -106,26 +110,6 @@ export default function Create() {
             await wallet.signTransaction(request)
             const result = await predicate.sendTransaction(request);
             console.log(result)
-
-            // request.addPredicateResources(resourcesPredicate, predicate);
-            // request.addCoinInput(coin, predicate)
-            // request.addCoinOutput(wallet.address, bn(0.04321), BaseAssetId);
-            // const resources = await provider.getResourcesToSpend(predicate.address, [
-            //     {
-            //         amount: bn(0.1),
-            //         assetId: BaseAssetId,
-            //     },
-            // ]);
-            // request.addResources(resources);
-
-            // wallet.signTransaction(request);
-
-            // const predicateResources = await predicate.getResourcesToSpend([
-            //     [1, BaseAssetId],
-            // ]);
-            
-            // const result = await predicate.sendTransaction(request);
-            // console.log(result)
         } catch (error) {
             console.error("Error during transfer:", error);
         }
