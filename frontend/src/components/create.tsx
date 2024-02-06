@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { BN, bn, Predicate, Provider, Address, BaseAssetId, WalletUnlocked, ScriptTransactionRequest, hexlify, transactionRequestify, Coin } from "fuels";
+import { BN, bn, Predicate, Provider, Address, BaseAssetId, WalletUnlocked, ScriptTransactionRequest, hexlify, transactionRequestify, Coin} from "fuels";
 import { PredicateAbi__factory } from "../predicate";
 import { useFuel, useIsConnected, useAccount, useWallet } from '@fuel-wallet/react';
 
@@ -76,6 +76,11 @@ export default function Create() {
             console.error("Predicate instance is not available.");
             return;
         }
+    
+        // if (!wallet) {
+        //     console.error("Wallet is not available.");
+        //     return;
+        // }
 
         try {
             // const tx = await predicate.simulateTransaction.getTransferTxId(Address.fromString(destinationAddress), bn.parseUnits(amountToSend.toString()), BaseAssetId, {
@@ -90,28 +95,31 @@ export default function Create() {
             // const coin: Coin = {
             //     id: BaseAssetId,
             //     assetId: BaseAssetId,
-            //     amount: bn(0.1),
+            //     amount: bn(1),
             //     owner: predicate.address,
             //     maturity: 0,
             //     blockCreated: bn(1),
             //     txCreatedIdx: bn(1),
             // }
             // request.addCoinInput(coin, predicate)
+            // console.log(provider)
+            // console.log(wallet.)
+
             console.log("wallet", wallet.address.toB256())
             console.log("wallet balance", (await wallet.getBalance(BaseAssetId)).toNumber());
             console.log("predicate", predicate.address.toB256())
             console.log("predicate balance", (await predicate.getBalance(BaseAssetId)).toNumber());
 
 
-            const walletResources = await wallet.getResourcesToSpend([[0.1, BaseAssetId]]);
-            request.addResources(walletResources)
-            console.log("wallet resources", walletResources)
+            // const walletResources = await wallet.getResourcesToSpend([[bn(1), BaseAssetId]]);
+            // request.addResources(walletResources)
+            // console.log("wallet resources", walletResources)
 
-            const predicateResources = await predicate.getResourcesToSpend([[bn(0.01), BaseAssetId]]);
+            const predicateResources = await predicate.getResourcesToSpend([[bn(1), BaseAssetId]]);
             console.log("predicate resources", predicateResources)
             request.addPredicateResources(predicateResources, predicate);
 
-            console.log(provider.cache)
+            console.log("here", provider.cache)
 
             const txCost = await provider.getTransactionCost(request);
             request.gasLimit = txCost.gasUsed;
