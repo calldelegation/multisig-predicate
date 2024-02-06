@@ -17,15 +17,15 @@ abigen!(Predicate(
 async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, AssetId) {
     // WALLETS
     let private_key_0: SecretKey =
-        "5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378"
+        "0xc2620849458064e8f1eb2bc4c459f473695b443ac3134c82ddd4fd992bd138fd"
             .parse()
             .unwrap();
     let private_key_1: SecretKey =
-        "5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378"
+        "0x37fa81c84ccd547c30c176b118d5cb892bdb113e8e80141f266519422ef9eefd"
             .parse()
             .unwrap();
     let private_key_2: SecretKey =
-        "5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378"
+        "0x976e5c3fa620092c718d852ca703b6da9e3075b9f2ecb8ed42d9f746bf26aafb"
             .parse()
             .unwrap();
 
@@ -83,9 +83,6 @@ async fn multisig_two_of_three() -> Result<()> {
     let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
         .with_provider(provider.clone())
         .with_configurables(configurables);
-
-    println!("{:?}", wallets[0].address());
-    println!("{:?}", predicate.address());
 
     let multisig_amount = 100;
     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
