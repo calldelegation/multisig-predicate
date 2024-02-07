@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { BN, bn, Predicate, Provider, Address, BaseAssetId, WalletUnlocked, ScriptTransactionRequest, hexlify, transactionRequestify, Coin} from "fuels";
+import { BN, bn, Predicate, Provider, Address, BaseAssetId, WalletUnlocked, ScriptTransactionRequest, hexlify, transactionRequestify, Coin, InputValue} from "fuels";
 import { PredicateAbi__factory } from "../predicate";
 import { useFuel, useIsConnected, useAccount, useWallet } from '@fuel-wallet/react';
 
 type AddressInput = { value: string };
 
 export default function Create() {
-    const [predicate, setPredicate] = useState<Predicate<[]> | null>(null);
+    const [predicate, setPredicate] = useState<Predicate<InputValue<void>[]> | null>(null);
     const [balance, setBalance] = useState<number | null>(null);
     const [isMultisigGenerated, setIsMultisigGenerated] = useState(false);
 
@@ -21,7 +21,7 @@ export default function Create() {
     const { isConnected } = useIsConnected();
     const { fuel } = useFuel();
     const { account } = useAccount();
-    const { wallet } = useWallet({ address: account });
+    const { wallet } = useWallet();
 
     const configurable = useMemo(() => ({
         REQUIRED_SIGNATURES: threshold,
@@ -36,10 +36,11 @@ export default function Create() {
         async function fetchPredicate() {
             try {
                 const provider = await Provider.create(
-                    "https://beta-4.fuel.network/graphql"
+                    "https://beta-5.fuel.network/graphql"
                 );
                 const predicateInstance = new Predicate(PredicateAbi__factory.bin, provider, PredicateAbi__factory.abi, configurable);
                 setPredicate(predicateInstance);
+                console.log("predicate instance", predicateInstance)
             } catch (error) {
                 console.error("Error fetching predicate:", error);
             }
@@ -87,11 +88,15 @@ export default function Create() {
             //     gasPrice,
             // });
             const provider = await Provider.create(
-                "https://beta-4.fuel.network/graphql"
+                "https://beta-5.fuel.network/graphql"
             );
 
-            const wallet = new WalletUnlocked(Address.fromB256("0x5e4196a18388a0c3dd8cd112928438b76c2d760421c3d8ae8c2d031c72a02378").toBytes(), provider);
-            const request = new ScriptTransactionRequest();
+            const wallet = new WalletUnlocked(Address.fromB256("0x1645232ff766da588e0883ac61318b2b91f9874fc6bf1cf170575a90a1743b3b").toBytes(), provider);
+            const { minGasPrice } = wallet.provider.getGasConfig();
+            const request = new ScriptTransactionRequest({
+                gasPrice: minGasPrice,
+                gasLimit: 1_000,
+            });
             // const coin: Coin = {
             //     id: BaseAssetId,
             //     assetId: BaseAssetId,
@@ -115,7 +120,7 @@ export default function Create() {
             // request.addResources(walletResources)
             // console.log("wallet resources", walletResources)
 
-            const predicateResources = await predicate.getResourcesToSpend([[bn(1), BaseAssetId]]);
+            const predicateResources = await predicate.getResourcesToSpend([[bn(2), BaseAssetId]]);
             console.log("predicate resources", predicateResources)
             request.addPredicateResources(predicateResources, predicate);
 

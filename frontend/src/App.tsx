@@ -11,7 +11,7 @@ function App() {
   const { isConnected } = useIsConnected();
   const { fuel } = useFuel();
   const { account } = useAccount();
-  const { wallet } = useWallet({ address: account });
+  const { wallet } = useWallet();
 
   return (
     <div className="App">
