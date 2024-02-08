@@ -53,7 +53,7 @@ describe(projectName, () => {
   });
 
   it("transacts using predicate", async () => {
-    const amountToPredicate = 100_000;
+    const amountToPredicate = 100;
     const amountToReceiver = 50;
     // const initialReceiverBalance = await receiver.getBalance();
 
@@ -63,6 +63,9 @@ describe(projectName, () => {
       predicate,
       amountToPredicate
     );
+
+    console.log(new BN(await predicate.getBalance()).toNumber());
+    console.log(new BN(await coreWallet.getBalance()).toNumber());
 
     console.log(predicate.address.toHexString());
 
@@ -74,16 +77,15 @@ describe(projectName, () => {
 
     const request = new ScriptTransactionRequest({
       script: byteCode,
-      scriptData: hexlify(new U64Coder().encode(bn(2000))),
       gasLimit: 10_000,
       gasPrice: provider.getGasConfig().minGasPrice,
     });
-    request.addCoinOutput(coreWallet.address, bn(100_000), BaseAssetId);
+    request.addCoinOutput(coreWallet.address, bn(100), BaseAssetId);
     const resourcesPredicate = await provider.getResourcesToSpend(
       predicate.address,
       [
         {
-          amount: bn(100_000),
+          amount: bn(100),
           assetId: BaseAssetId,
         },
       ]
@@ -99,7 +101,7 @@ describe(projectName, () => {
       });
 
     const res = await predicate.sendTransaction(transactionRequest);
-    console.log(res);
+    // console.log(res);
 
     console.log(new BN(await predicate.getBalance()).toNumber());
     console.log(new BN(await coreWallet.getBalance()).toNumber());
