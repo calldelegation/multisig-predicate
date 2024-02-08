@@ -38,6 +38,7 @@ export default function Create() {
                 const provider = await Provider.create(
                     "https://beta-5.fuel.network/graphql"
                 );
+                console.log(configurable)
                 const predicateInstance = new Predicate(PredicateAbi__factory.bin, provider, PredicateAbi__factory.abi, configurable);
                 setPredicate(predicateInstance);
                 console.log("predicate instance", predicateInstance)
