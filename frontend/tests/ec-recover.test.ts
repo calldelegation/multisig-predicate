@@ -18,8 +18,8 @@ const projectName = "ec-recover";
 
 describe(projectName, () => {
   let predicate: Predicate<InputValue[]>;
-  let wallet: WalletUnlocked;
-  let receiver: WalletLocked;
+//   let wallet: WalletUnlocked;
+//   let receiver: WalletLocked;
   let coreWallet: WalletUnlocked;
   let provider: Provider;
   let gasPrice: BN;
@@ -49,7 +49,7 @@ describe(projectName, () => {
   });
 
   it("transacts using predicate", async () => {
-    const amountToPredicate = 200_000;
+    const amountToPredicate = 100_000;
     const amountToReceiver = 50;
     // const initialReceiverBalance = await receiver.getBalance();
 
@@ -73,7 +73,7 @@ describe(projectName, () => {
       gasLimit: 10_000,
       gasPrice: provider.getGasConfig().minGasPrice,
     });
-    request.addCoinOutput(coreWallet.address, bn(100), BaseAssetId);
+    request.addCoinOutput(coreWallet.address, bn(100_000), BaseAssetId);
     const resourcesPredicate = await provider.getResourcesToSpend(
       predicate.address,
       [
