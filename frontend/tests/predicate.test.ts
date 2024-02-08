@@ -1,6 +1,6 @@
 import { describe, it, beforeAll } from 'vitest';
 import { getForcProject } from '@fuel-ts/utils/test-utils';
-import { BN, InputValue, JsonAbi, WalletLocked, WalletUnlocked } from 'fuels';
+import type { BN, InputValue, JsonAbi, WalletLocked, WalletUnlocked } from 'fuels';
 import { BaseAssetId, Predicate, Provider, Address, ScriptTransactionRequest } from 'fuels';
 import { fundPredicate, assertBalances, setupWallets } from './utilities';
 
