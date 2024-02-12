@@ -4,22 +4,19 @@ import {
   BN,
   InputValue,
   JsonAbi,
-  ScriptTransactionRequest,
-  WalletLocked,
   WalletUnlocked,
   Address,
   bn,
-  Script,
 } from "fuels";
-import { BaseAssetId, Predicate, Provider, hexlify, U64Coder } from "fuels";
-import { fundPredicate, assertBalances, setupWallets } from "./utilities";
+import { BaseAssetId, Predicate, Provider } from "fuels";
+import { fundPredicate } from "./utilities";
 
 const projectName = "ec-recover";
 
 describe(projectName, () => {
   let predicate: Predicate<InputValue[]>;
-//   let wallet: WalletUnlocked;
-//   let receiver: WalletLocked;
+  //   let wallet: WalletUnlocked;
+  //   let receiver: WalletLocked;
   let coreWallet: WalletUnlocked;
   let provider: Provider;
   let gasPrice: BN;
@@ -37,7 +34,6 @@ describe(projectName, () => {
       ).toBytes(),
       provider
     );
-    console.log(coreWallet.address.toHexString());
     gasPrice = provider.getGasConfig().minGasPrice;
 
     // Setup predicate
@@ -51,9 +47,6 @@ describe(projectName, () => {
   it("transacts using predicate", async () => {
     const amountToPredicate = 100_000;
     const amountToReceiver = 50;
-    // const initialReceiverBalance = await receiver.getBalance();
-
-    console.log(coreWallet.getBalance());
 
     const initialPredicateBalance = await fundPredicate(
       coreWallet,
@@ -61,18 +54,16 @@ describe(projectName, () => {
       amountToPredicate
     );
 
-    // ENCASE_START_SCRIPT_TRANSACTION    
-    const { binHexlified: byteCode } = getForcProject<JsonAbi>({
-      projectDir: `../${projectName}`,
-      projectName,
-    });
+    const request = await predicate.createTransfer(
+      coreWallet.address,
+      amountToReceiver,
+      BaseAssetId,
+      {
+        gasPrice: provider.getGasConfig().minGasPrice,
+        gasLimit: 10_000,
+      }
+    );
 
-    const request = new ScriptTransactionRequest({
-      script: byteCode,
-      scriptData: hexlify(new U64Coder().encode(bn(2000))),
-      gasLimit: 10_000,
-      gasPrice: provider.getGasConfig().minGasPrice,
-    });
     request.addCoinOutput(coreWallet.address, bn(100_000), BaseAssetId);
     const resourcesPredicate = await provider.getResourcesToSpend(
       predicate.address,
@@ -84,60 +75,66 @@ describe(projectName, () => {
       ]
     );
     request.addPredicateResources(resourcesPredicate, predicate);
-    // ENCASE_END_SCRIPT_TRANSACTION
-    
-    // construct transaction
-    // ENCASE_CREATE_TRANSFER
-    // Question: Why is there no witness found?
-    // const request = await predicate.createTransfer(
-    //   coreWallet.address,
-    //   amountToReceiver,
-    //   BaseAssetId,
-    //   {
-    //     gasPrice: provider.getGasConfig().minGasPrice,
-    //     gasLimit: 1_000,
-    //   }
-    // );
-    // ENCASE_CREATE_TRANSFER
 
-    // const resources = await coreWallet.getResourcesToSpend([[amountToReceiver, BaseAssetId]]);
-    // const signature = await coreWallet.signTransaction(request);
-
-    // request.addResources(resources);
     const signedTransaction = await coreWallet.signTransaction(request);
-    // predicate.populateTransactionPredicateData(request);
     const transactionRequest =
       await coreWallet.populateTransactionWitnessesSignature({
         ...request,
-        witnesses: [signedTransaction]
-    });
+        witnesses: [signedTransaction],
+      });
 
-    // console.log("Signature", signature);
     console.log("Witnesses", transactionRequest.witnesses);
     console.log("Cache", provider.cache);
-    // const tx = await predicate.transfer(
-    //   receiver.address,
-    //   amountToReceiver,
-    //   BaseAssetId,
-    //   {
-    //     gasPrice,
-    //     gasLimit: 10_000,
-    //   }
-    // );
-    // await tx.waitForResult();
+
     const res = await predicate.sendTransaction(transactionRequest);
-    console.log(res);
 
     console.log(new BN(await predicate.getBalance()).toNumber());
     console.log(new BN(await coreWallet.getBalance()).toNumber());
+  });
 
-    // await assertBalances(
-    //   predicate,
-    //   receiver,
-    //   initialPredicateBalance,
-    //   initialReceiverBalance,
-    //   amountToPredicate,
-    //   amountToReceiver
-    // );
+  it("transacts using predicate fails", async () => {
+    const amountToPredicate = 100_000;
+    const amountToReceiver = 50;
+
+    const initialPredicateBalance = await fundPredicate(
+      coreWallet,
+      predicate,
+      amountToPredicate
+    );
+
+    const request = await predicate.createTransfer(
+      coreWallet.address,
+      amountToReceiver,
+      BaseAssetId,
+      {
+        gasPrice: provider.getGasConfig().minGasPrice,
+        gasLimit: 10_000,
+      }
+    );
+
+    request.addCoinOutput(coreWallet.address, bn(100_000), BaseAssetId);
+    const resourcesPredicate = await provider.getResourcesToSpend(
+      predicate.address,
+      [
+        {
+          amount: bn(100_000),
+          assetId: BaseAssetId,
+        },
+      ]
+    );
+    request.addPredicateResources(resourcesPredicate, predicate);
+
+    // Transaction witness is not filled in correctly
+    const signedTransaction = await coreWallet.signTransaction(request);
+    const transactionRequest =
+      await coreWallet.populateTransactionWitnessesSignature(request);
+
+    console.log("Witnesses", transactionRequest.witnesses);
+    console.log("Cache", provider.cache);
+
+    const res = await predicate.sendTransaction(transactionRequest);
+
+    console.log(new BN(await predicate.getBalance()).toNumber());
+    console.log(new BN(await coreWallet.getBalance()).toNumber());
   });
 });
