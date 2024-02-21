@@ -1,31 +1,32 @@
 import { describe, it, beforeAll } from "vitest";
 import { getForcProject } from "@fuel-ts/utils/test-utils";
-import { BN, InputValue, JsonAbi, WalletLocked, WalletUnlocked } from "fuels";
 import {
-  bn,
-  hexlify,
-  U64Coder,
-  BaseAssetId,
-  Predicate,
-  Provider,
-  Address,
+  BN,
+  InputValue,
+  JsonAbi,
   ScriptTransactionRequest,
+  WalletLocked,
+  WalletUnlocked,
+  Address,
+  bn,
+  Script,
 } from "fuels";
+import { BaseAssetId, Predicate, Provider, hexlify, U64Coder } from "fuels";
 import { fundPredicate, assertBalances, setupWallets } from "./utilities";
 
-const projectName = "predicate";
+const projectName = "ec-recover";
 
 describe(projectName, () => {
   let predicate: Predicate<InputValue[]>;
-  // let wallet: WalletUnlocked;
-  // let receiver: WalletLocked;
+//   let wallet: WalletUnlocked;
+//   let receiver: WalletLocked;
   let coreWallet: WalletUnlocked;
   let provider: Provider;
   let gasPrice: BN;
 
   beforeAll(async () => {
     // Seed wallet from TS SDK Node
-    process.env.GENESIS_SECRET = "0x02";
+    process.env.GENESIS_SECRET = "0x03";
 
     // Setup wallets
     // [wallet, receiver] = await setupWallets();
@@ -36,40 +37,31 @@ describe(projectName, () => {
       ).toBytes(),
       provider
     );
+    console.log(coreWallet.address.toHexString());
     gasPrice = provider.getGasConfig().minGasPrice;
 
     // Setup predicate
-    const configurables = {
-      REQUIRED_SIGNATURES: 1,
-      SIGNERS: [
-        { value: coreWallet.address.toB256() },
-        { value: coreWallet.address.toB256() },
-        { value: coreWallet.address.toB256() },
-      ],
-    };
-    const { binHexlified: byteCode, abiContents: ABI } =
-      getForcProject<JsonAbi>({ projectDir: `../${projectName}`, projectName });
-    predicate = new Predicate(byteCode, provider, ABI, configurables);
+    const { binHexlified: byteCode } = getForcProject<JsonAbi>({
+      projectDir: `../${projectName}`,
+      projectName,
+    });
+    predicate = new Predicate(byteCode, provider);
   });
 
   it("transacts using predicate", async () => {
-    const amountToPredicate = 100;
+    const amountToPredicate = 100_000;
     const amountToReceiver = 50;
     // const initialReceiverBalance = await receiver.getBalance();
 
-    // fund predicate
+    console.log(coreWallet.getBalance());
+
     const initialPredicateBalance = await fundPredicate(
       coreWallet,
       predicate,
       amountToPredicate
     );
 
-    console.log(new BN(await predicate.getBalance()).toNumber());
-    console.log(new BN(await coreWallet.getBalance()).toNumber());
-
-    console.log(predicate.address.toHexString());
-
-    // construct transaction
+    // ENCASE_START_SCRIPT_TRANSACTION    
     const { binHexlified: byteCode } = getForcProject<JsonAbi>({
       projectDir: `../${projectName}`,
       projectName,
@@ -77,40 +69,67 @@ describe(projectName, () => {
 
     const request = new ScriptTransactionRequest({
       script: byteCode,
+      scriptData: hexlify(new U64Coder().encode(bn(2000))),
       gasLimit: 10_000,
       gasPrice: provider.getGasConfig().minGasPrice,
     });
-    request.addCoinOutput(coreWallet.address, bn(100), BaseAssetId);
+    request.addCoinOutput(coreWallet.address, bn(100_000), BaseAssetId);
     const resourcesPredicate = await provider.getResourcesToSpend(
       predicate.address,
       [
         {
-          amount: bn(100),
+          amount: bn(100_000),
           assetId: BaseAssetId,
         },
       ]
     );
     request.addPredicateResources(resourcesPredicate, predicate);
+    // ENCASE_END_SCRIPT_TRANSACTION
+    
+    // construct transaction
+    // ENCASE_CREATE_TRANSFER
+    // Question: Why is there no witness found?
+    // const request = await predicate.createTransfer(
+    //   coreWallet.address,
+    //   amountToReceiver,
+    //   BaseAssetId,
+    //   {
+    //     gasPrice: provider.getGasConfig().minGasPrice,
+    //     gasLimit: 1_000,
+    //   }
+    // );
+    // ENCASE_CREATE_TRANSFER
 
+    // const resources = await coreWallet.getResourcesToSpend([[amountToReceiver, BaseAssetId]]);
+    // const signature = await coreWallet.signTransaction(request);
+
+    // request.addResources(resources);
     const signedTransaction = await coreWallet.signTransaction(request);
-
+    // predicate.populateTransactionPredicateData(request);
     const transactionRequest =
       await coreWallet.populateTransactionWitnessesSignature({
         ...request,
-        witnesses: [signedTransaction],
-      });
+        witnesses: [signedTransaction]
+    });
 
+    // console.log("Signature", signature);
+    console.log("Witnesses", transactionRequest.witnesses);
+    console.log("Cache", provider.cache);
+    // const tx = await predicate.transfer(
+    //   receiver.address,
+    //   amountToReceiver,
+    //   BaseAssetId,
+    //   {
+    //     gasPrice,
+    //     gasLimit: 10_000,
+    //   }
+    // );
+    // await tx.waitForResult();
     const res = await predicate.sendTransaction(transactionRequest);
-    // console.log(res);
+    console.log(res);
 
     console.log(new BN(await predicate.getBalance()).toNumber());
     console.log(new BN(await coreWallet.getBalance()).toNumber());
-
-    // const tx = await predicate.transfer(receiver.address, amountToReceiver, BaseAssetId, {
-    //   gasPrice,
-    //   gasLimit: 10_000,
-    // });
-    // await tx.waitForResult();
 
     // await assertBalances(
     //   predicate,
